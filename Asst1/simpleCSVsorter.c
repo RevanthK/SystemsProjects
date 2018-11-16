@@ -145,7 +145,6 @@ int main(int argc, char** argv) {
 	parent = getpid();
 
 	printf("Initial PID: %d\n", parent);
-	printf("hello\n");
 	
 	if(argc < 3) {
 		printf("Error: incorrect number of arguments\n");
@@ -174,7 +173,6 @@ int main(int argc, char** argv) {
 			outdir = strdup(argv[i+1]);
 
 	}
-	printf("indir: %s, outdir: %s\n", indir, outdir);
 	printf("PIDS of all child processes: ");
 	fflush(stdout);
 	search(indir, outdir);

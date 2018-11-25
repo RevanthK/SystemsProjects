@@ -23,8 +23,8 @@ int sort(char* filePath, char* outPath);
 int search(const char* name, const char* outdir) {
     DIR *dir;
     struct dirent *entry;
+    
     int count = 0;
-
     /*
     struct LLNode* head = (struct LLNode*)malloc(sizeof(struct LLNode));
     struct LLNode* ptr = head;
@@ -41,7 +41,7 @@ int search(const char* name, const char* outdir) {
 	    strcat(filePath,name);
 	    strcat(filePath,"/");
 	    strcat(filePath,entry->d_name);
-	    //printf("File: %s\n", new_str);
+	    //printf("File: %s\n", filePath);
     	tstdir = opendir(filePath);
     	pid_t cpid;
 		if(tstdir){
@@ -53,24 +53,25 @@ int search(const char* name, const char* outdir) {
 
             char* tmpdir = (char*) malloc(sizeof(outdir)+3); 
             if(strcmp(outdir, "") != 0){
-            	strcat(tmpdir,"../");
+            	//strcat(tmpdir,"../");
             	strcat(tmpdir,outdir);
             }
             else
             	strcat(tmpdir,outdir);
             
            	if ((cpid = fork()) == 0){ 
-           		//recursive search         		  	
+           		//recursive search
+           		//printf("dirpath: %s\n", path);         		  	
             	_exit(search(path, tmpdir) + 1);
         	}
         	else{
+        		count += 1;
             	printf("%d,", cpid);
             	fflush(stdout);
             }
 
         } 
         else {
-
         	char* fileName = entry->d_name;
     		int len = strlen(fileName);
 			const char *last_four = &fileName[len-4];
@@ -81,29 +82,35 @@ int search(const char* name, const char* outdir) {
 
     			if ((cpid = fork()) == 0){
 
-	    			char* outPath = malloc(strlen(fileName)+7);
+	    			char* outPath = malloc(strlen(outdir) + strlen(fileName) + 10);
 	    			if(strcmp(outdir, "") != 0){ 
-	    				strcpy(outPath, outdir);
+	    				strcat(outPath, outdir);
+	    				strcat(outPath, fileName);
+	    				strcpy(&outPath[strlen(outPath)-4], "sorted.csv");
 	    			}
-	    			else
+	    			else{
 	    				strcpy(outPath, filePath);
-	    			strcpy(&outPath[strlen(outPath)-4], "sorted.csv");
-	    			//printf("%s\n", filePath);
-
+	    				strcpy(&outPath[strlen(outPath)-4], "sorted.csv");
+	    			}
+	    			
+	    			//printf("outdir: %s\n", outdir);
+	    			//printf("outpath: %s\n", outPath);
 	    			//sort csv
-
+	    			//printf("filepath: %s\n", filePath);
     				sort(filePath, outPath);
-
+    				//printf("filepath: %s\n", filePath);
+    				count += 1;
     				_exit(1);	
             	}
             	else{
+            		count += 1;
             		printf("%d,", cpid);
             		fflush(stdout);
             	}
     		}
     		
-        }
-        count += 1;
+        }    
+
         /*
         ptr -> id = cpid;
         ptr -> next = (struct LLNode*)malloc(sizeof(struct LLNode)); 
@@ -118,7 +125,7 @@ int search(const char* name, const char* outdir) {
     for(cnt = 0; cnt < count; cnt++){   	
     	wait(&status);
     	status /= 256;
-    	//printf("status: %d\n", status);
+    	//printf("name: %s status: %d\n", name, status);
     	sum += status;
     }
 
@@ -155,7 +162,7 @@ int main(int argc, char** argv) {
 	const char* indir = (char*) malloc(124*sizeof(char));
 	const char* outdir = (char*) malloc(124*sizeof(char));
 
-	indir = ".";
+	indir = "./";
 	outdir = "";
 
 	for(i = 1; i<argc; i+=2) {
@@ -173,6 +180,7 @@ int main(int argc, char** argv) {
 			outdir = strdup(argv[i+1]);
 
 	}
+	//printf("%s - %s\n", indir, outdir);
 	printf("PIDS of all child processes: ");
 	fflush(stdout);
 	search(indir, outdir);
@@ -217,6 +225,8 @@ int sort(char* inPath, char* outPath){
 	  
 	fp = fopen(inPath, "r");
 	outFile = fopen(outPath, "w+");
+
+	//printf("inpath: %s outpath: %s\n",inPath, outPath);
 
 	if(!outFile){
 	    printf("Error: out directory %s does not exist", outPath);

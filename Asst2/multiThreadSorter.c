@@ -13,18 +13,29 @@
 #include <pthread.h>
 
 int lineSize = 1024;
+int pathLength = 512;
 int filterColumnIsAlpha = false;
 char* filterColumn;
+int sum = 0;
 
 pid_t parent;
 
 char* trimwhitespace(char* str);
-int sort(char* filePath, char* outPath);
+void* sort(void *voidData);
 
-int search(const char* name, const char* outdir) {
+
+void* search(void *voidData) {
+	
+    char** args = voidData;
+
+	char* name;
+	char* outdir;
+
+	strcpy(name,args[0]);
+	strcpy(outdir,args[1]); 
+
     DIR *dir;
     struct dirent *entry;
-    int count = 0;
 
     /*
     struct LLNode* head = (struct LLNode*)malloc(sizeof(struct LLNode));
@@ -60,14 +71,18 @@ int search(const char* name, const char* outdir) {
             else
             	strcat(tmpdir,outdir);
             
-           	if ((cpid = fork()) == 0){ 
-           		//recursive search         		  	
-            	_exit(search(path, tmpdir) + 1);
-        	}
-        	else{
-            	printf("%d,", cpid);
-            	fflush(stdout);
-            }
+            pthread_t id;
+            sum += 1;
+    			
+			char args[2][pathLength];
+			strcpy(args[0],path);
+			strcpy(args[1],tmpdir);
+
+			//int (*search_ptr)(void *) = &search;
+
+			pthread_create(&id,NULL,&search,args);
+			printf("%d,", (int)id);
+			fflush(stdout);
 
         } 
         else {
@@ -80,31 +95,29 @@ int search(const char* name, const char* outdir) {
 
     		if(strcmp(last_four, ".csv") == 0 && fileName[0] != '.'){
 
-    			if ((cpid = fork()) == 0){
+            	pthread_t id;
+            	sum += 1;
+    			
+				char* outPath = malloc(strlen(fileName)+7);
+    			if(strcmp(outdir, "") != 0){ 
+    				strcpy(outPath, outdir);
+    			}
+    			else
+    				strcpy(outPath, filePath);
+    			strcpy(&outPath[strlen(outPath)-4], "sorted.csv");
 
-	    			char* outPath = malloc(strlen(fileName)+7);
-	    			if(strcmp(outdir, "") != 0){ 
-	    				strcpy(outPath, outdir);
-	    			}
-	    			else
-	    				strcpy(outPath, filePath);
-	    			strcpy(&outPath[strlen(outPath)-4], "sorted.csv");
-	    			//printf("%s\n", filePath);
+    			char args[2][pathLength];
+    			strcpy(args[0],filePath);
+    			strcpy(args[1],outPath);
 
-	    			//sort csv
+    			//int (*sort_ptr)(void *) = &sort;
 
-    				sort(filePath, outPath);
-
-    				_exit(1);	
-            	}
-            	else{
-            		printf("%d,", cpid);
-            		fflush(stdout);
-            	}
+    			pthread_create(&id,NULL, &sort,args);
+    			printf("%d,", (int)id);
+    			fflush(stdout);
     		}
     		
         }
-        count += 1;
         /*
         ptr -> id = cpid;
         ptr -> next = (struct LLNode*)malloc(sizeof(struct LLNode)); 
@@ -112,26 +125,10 @@ int search(const char* name, const char* outdir) {
         */
         //free(tstdir);
     }
-    int sum = 0;
-    int status = 0;
 
-    int cnt;
-    for(cnt = 0; cnt < count; cnt++){   	
-    	wait(&status);
-    	status /= 256;
-    	//printf("status: %d\n", status);
-    	sum += status;
-    }
+	closedir(dir);
 
-	if(parent == getpid()){
-		closedir(dir);
-		printf("\nTotal number of processes: %d\n", sum);
-	}
-	else{
-		closedir(dir);
-	}
-
-	return sum;
+	return NULL;
     /*
     while ((parent = wait(&status)) > 0);
     if(parent == getpid()){
@@ -176,7 +173,13 @@ int main(int argc, char** argv) {
 	}
 	printf("PIDS of all child processes: ");
 	fflush(stdout);
-	search(indir, outdir);
+	char args[2][pathLength];
+    strcpy(args[0],indir);
+    strcpy(args[1],outdir);
+
+	search(args);
+
+	printf("\nTotal number of processes: %d\n", sum);
 
 	return 0;
 }
@@ -202,7 +205,15 @@ int rowNums(char* filePath){
 ////////////////////////////////////////////////////////////
 
 //int sort(char* filePath, char* fileName, char* filterColumn){
-int sort(char* inPath, char* outPath){
+void* sort(void *voidData){
+	
+	char** args = voidData;
+	char* inPath;
+	char* outPath;
+
+	strcpy(inPath,args[0]);
+	strcpy(outPath,args[1]); 
+
 	int filterIndex = -1;
 	//number of rows in movie database
 	int rownums = rowNums(inPath);
@@ -221,6 +232,7 @@ int sort(char* inPath, char* outPath){
 
 	if(!outFile){
 	    printf("Error: out directory %s does not exist", outPath);
+	    return NULL;
 	}
 
 	fgets(line, lineSize, fp);
@@ -261,13 +273,13 @@ int sort(char* inPath, char* outPath){
 		printf("\nError: Column provided as argument does not exist in csv\n");
 		fclose(fp);    
     	fclose(outFile);
-		return 1;
+		return NULL;
 	}
 	if(rownums == 0 || colnums == 0){
 		printf("Error: Empty csv");
 		fclose(fp);    
     	fclose(outFile);
-		return 1;
+		return NULL;
 	}
 	if(colnums != 28){
 		printf("Error: Incorrect number of columns");
@@ -286,7 +298,7 @@ int sort(char* inPath, char* outPath){
 			printf("Error: Incorrect number of rows\n");
 			fclose(fp);    
     		fclose(outFile);
-			return 1;
+			return NULL;
 		}
 
 		char* tmp = strdup(line);
@@ -379,7 +391,7 @@ int sort(char* inPath, char* outPath){
   		printf("Error: Incorrect number of rows\n");
   		fclose(fp);    
     	fclose(outFile);
-  		return 1;
+  		return NULL;
 	  }
       
     //sorting struct array
@@ -402,8 +414,8 @@ int sort(char* inPath, char* outPath){
     
     fclose(fp);    
     fclose(outFile);
-	
-    return 0;
+
+    return NULL;
 }
 
 //remove leading/trailing whitespace
